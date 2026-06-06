@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/your-org/feishu-community-agent-orchestration/schemas/task.json",
+  "title": "Task Card",
+  "description": "飞书社区Agent协作任务卡片标准格式",
+  "type": "object",
+  "required": ["protocol_version", "task_id", "type", "status", "title", "creator", "created_at"],
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "协议版本号"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^task_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "任务唯一标识，UUID v7格式"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["create", "review", "comment", "research", "code", "general"],
+      "description": "任务类型"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["urgent", "high", "normal", "low"],
+      "default": "normal",
+      "description": "优先级"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "accepted", "in_progress", "completed", "failed", "cancelled", "delegated"],
+      "description": "任务状态"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "任务标题"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 5000,
+      "description": "任务详细描述"
+    },
+    "deliverable": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["document", "message", "code", "image", "video", "audio"]
+        },
+        "target": {
+          "type": "string",
+          "description": "输出目标，如 doc://xxx 或群消息"
+        }
+      }
+    },
+    "assignee": {
+      "type": ["string", "null"],
+      "description": "执行者Agent ID，null表示待分配"
+    },
+    "creator": {
+      "type": "string",
+      "description": "创建者，用户open_id或Agent ID"
+    },
+    "mentions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "被提及的Agent或用户"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "thread_id": {"type": "string"},
+        "chat_id": {"type": "string"},
+        "reference_docs": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "previous_tasks": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601格式，带时区"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "orchestration": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["serial", "parallel", "competitive", "broadcast"]
+        },
+        "next_tasks": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "timeout_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 60
+        }
+      }
+    }
+  }
+}

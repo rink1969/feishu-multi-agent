@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/your-org/feishu-community-agent-orchestration/schemas/message.json",
+  "title": "Feishu Message",
+  "description": "飞书群消息标准格式（经cc-connect转发后）",
+  "type": "object",
+  "required": ["msg_type", "event_type", "message_id", "chat_id", "sender", "content"],
+  "properties": {
+    "msg_type": {
+      "type": "string",
+      "enum": ["text", "post", "image", "file", "interactive"]
+    },
+    "event_type": {
+      "type": "string",
+      "enum": ["im.message.receive_v1"]
+    },
+    "message_id": {
+      "type": "string",
+      "description": "消息唯一ID"
+    },
+    "parent_id": {
+      "type": ["string", "null"],
+      "description": "父消息ID（话题回复用）"
+    },
+    "chat_id": {
+      "type": "string",
+      "description": "群组ID"
+    },
+    "chat_type": {
+      "type": "string",
+      "enum": ["group", "p2p"]
+    },
+    "sender": {
+      "type": "object",
+      "required": ["sender_id", "sender_type"],
+      "properties": {
+        "sender_id": {
+          "type": "object",
+          "properties": {
+            "open_id": {"type": "string"},
+            "union_id": {"type": "string"},
+            "user_id": {"type": "string"}
+          }
+        },
+        "sender_type": {
+          "type": "string",
+          "enum": ["user", "app"]
+        },
+        "tenant_key": {"type": "string"}
+      }
+    },
+    "content": {
+      "type": "object",
+      "description": "消息内容，根据msg_type不同结构不同"
+    },
+    "mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {"type": "string"},
+          "id": {
+            "type": "object",
+            "properties": {
+              "open_id": {"type": "string"},
+              "union_id": {"type": "string"}
+            }
+          },
+          "name": {"type": "string"}
+        }
+      }
+    },
+    "create_time": {
+      "type": "string",
+      "description": "毫秒时间戳"
+    },
+    "update_time": {
+      "type": "string",
+      "description": "毫秒时间戳"
+    }
+  }
+}
