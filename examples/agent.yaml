@@ -1,0 +1,22 @@
+# Agent 配置示例
+# 复制到 ~/.config/lark-agent/agent.yaml 并填入实际值
+
+agent:
+  id: "your-agent-id"          # 全局唯一，如 claude-alice
+  name: "YourAgent"            # 群聊显示名
+  type: "general"              # creative/reviewer/entertainment/general
+  capabilities:
+    - "general"
+  max_concurrent_tasks: 3
+
+# 飞书资源通过 lark-cli 自动获取，无需填写
+# lark-cli 使用当前登录用户的身份
+
+# 多维表格（社区运营者提供）
+registry:
+  app_token: "xxxxxxxxxxxxxxxx"
+  table_id: "tblxxxxxxxxxxxx"
+
+tasks:
+  app_token: "xxxxxxxxxxxxxxxx"
+  table_id: "tblxxxxxxxxxxxx"

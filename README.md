@@ -1,6 +1,7 @@
-# 飞书社区多Agent协作协议
+# 飞书社区多Agent协作协议（lark-cli 版）
 
-> 让多个 AI Agent 在飞书（Lark）群组中像人类团队成员一样协作。
+> 让多个 AI Agent 在飞书（Lark）群组中像人类团队成员一样协作。  
+> **无需企业应用、无需 cc-connect、无需公网IP** — 每个社区成员用自己的飞书账号登录 `lark-cli`，Agent 直接调用命令行与飞书交互。
 
 ## 效果预览
 
@@ -34,7 +35,8 @@
 
 ## 核心特点
 
-- **Agent 零改造** — 各 Agent 加载 Skill 即可接入，无需修改核心代码
+- **零企业配置** — 不需要创建飞书应用、不需要管理员审批权限
+- **Agent 零改造** — 各 Agent 加载 Skill 即可接入，通过 `lark-cli` 命令与飞书交互
 - **去中心化** — 每个 Agent 独立运行，通过飞书群和云文档协作
 - **自然交互** — 人类用 @提及 和日常语言与 Agent 交流
 - **任务驱动** — 标准任务卡片，支持串行/并行/竞争/广播多种模式
@@ -46,54 +48,55 @@
 
 | 角色 | 职责 | 需要做什么 |
 |------|------|-----------|
-| **企业管理员** | 飞书后台配置 | 创建应用、分配权限、获取凭证 |
 | **社区运营者** | 搭建协作环境 | 创建群组、配置多维表格、邀请成员 |
-| **Agent 所有者** | 运行自己的 Agent | 安装 cc-connect、加载 Skill、注册身份 |
+| **Agent 所有者** | 运行自己的 Agent | 安装 lark-cli、登录飞书账号、加载 Skill |
 | **普通成员** | 使用 Agent 协作 | @Agent 分配任务、参与讨论 |
 
 ---
 
 ## 快速开始
 
-### 第一步：企业管理员配置（10分钟）
+### 第一步：安装 lark-cli（5分钟）
 
-#### 1.1 创建飞书应用
+#### 1.1 安装 Node.js 和 lark-cli
 
-1. 访问 [飞书开发者后台](https://open.feishu.cn/app)
-2. 点击「创建企业自建应用」
-3. 填写应用名称：`社区Agent协作`
-4. 记录 **App ID** 和 **App Secret**
+```bash
+# 安装 Node.js（如已安装可跳过）
+# macOS
+brew install node
 
-#### 1.2 配置权限
+# Ubuntu/Debian
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-在「权限管理」中申请以下权限：
-
-| 权限 | 用途 |
-|------|------|
-| `im:chat:readonly` | 读取群组信息 |
-| `im:message.group_msg` | 发送群消息 |
-| `im:message:send_as_bot` | 以机器人身份发送 |
-| `docx:document:readonly` | 读取云文档 |
-| `docx:document:write` | 编辑云文档 |
-| `bitable:app:readonly` | 读取多维表格 |
-| `bitable:app:write` | 编辑多维表格 |
-| `contact:user.base:readonly` | 读取用户基本信息 |
-
-#### 1.3 发布应用
-
-1. 「版本管理与发布」→「创建版本」
-2. 填写版本号（如 1.0.0）和更新说明
-3. 提交审核（企业内部应用通常自动通过）
-4. **将应用添加到目标群组**
-
-#### 1.4 提供凭证
-
-将以下信息提供给社区运营者：
-
+# 验证
+node --version  # v20+
+npm --version   # 10+
 ```
-App ID: cli_xxxxxxxxxxxxxxxx
-App Secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+#### 1.2 安装 lark-cli
+
+```bash
+npm install -g @larksuite/cli
+
+# 验证安装
+lark-cli --version
 ```
+
+#### 1.3 登录飞书账号
+
+```bash
+# 发起登录（会显示二维码或链接）
+lark-cli auth login
+
+# 按提示在浏览器/飞书 APP 中扫码授权
+# 登录成功后，验证状态
+lark-cli auth status
+```
+
+登录成功后，`lark-cli` 会保存 token 到本地配置，后续命令自动使用。
+
+> **注意**：登录的是你的**个人飞书账号**，Agent 将以你的身份读取你加入的群、你创建的文档。
 
 ---
 
@@ -158,91 +161,36 @@ App Secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 #### 2.4 记录关键 ID
 
-将以下 ID 提供给 Agent 所有者：
+将以下信息提供给 Agent 所有者：
 
 ```
-App ID: cli_xxxxxxxxxxxxxxxx
-App Secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
 Agent注册表:
+  多维表格链接: https://xxx.feishu.cn/base/xxxxxxxx
   App Token: xxxxxxxxxxxxxxxx
   Table ID: tblxxxxxxxxxxxx
 
 任务看板:
+  多维表格链接: https://xxx.feishu.cn/base/xxxxxxxx
   App Token: xxxxxxxxxxxxxxxx
   Table ID: tblxxxxxxxxxxxx
 
 群组:
-  协作大厅 chat_id: oc_xxxxxxxxxxxxxxxx
-  创作工坊 chat_id: oc_xxxxxxxxxxxxxxxx
+  协作大厅: 在群里复制链接获取 chat_id
+  创作工坊: 在群里复制链接获取 chat_id
 ```
 
 ---
 
-### 第三步：Agent 所有者接入（20分钟/人）
+### 第三步：Agent 所有者接入（10分钟/人）
 
-#### 3.1 安装 cc-connect
-
-cc-connect 是开源的 Agent-IM 桥接工具，支持飞书：
+#### 3.1 确认 lark-cli 已登录
 
 ```bash
-# 安装（以 Python 版为例）
-pip install cc-connect
-
-# 或使用 uv
-uv pip install cc-connect
-
-# 验证安装
-cc-connect --version
+lark-cli auth status
+# 应显示已登录的用户信息
 ```
 
-> 项目地址：https://github.com/your-org/cc-connect（示例）
-> 如使用其他桥接工具，确保支持飞书 WebSocket 事件订阅。
-
-#### 3.2 配置 cc-connect
-
-创建配置文件 `~/.cc-connect/config.yaml`：
-
-```yaml
-platform: feishu
-
-feishu:
-  app_id: "cli_xxxxxxxxxxxxxxxx"
-  app_secret: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  encrypt_key: ""  # 如启用消息加密则填写
-  verification_token: ""  # 事件订阅验证令牌
-
-  # 事件订阅方式：websocket（推荐）或 webhook
-  event_mode: websocket
-  
-  # WebSocket 配置（无需公网IP）
-  websocket:
-    reconnect_interval: 5
-    heartbeat_interval: 30
-
-agent:
-  id: "claude-alice"           # 全局唯一
-  name: "Alice"                # 群聊显示名
-  type: "creative"             # creative/reviewer/entertainment/general
-  capabilities:
-    - "writing"
-    - "editing"
-    - "brainstorming"
-  max_concurrent_tasks: 3
-
-registry:
-  app_token: "xxxxxxxxxxxxxxxx"   # Agent注册表 App Token
-  table_id: "tblxxxxxxxxxxxx"     # Agent注册表 Table ID
-
-tasks:
-  app_token: "xxxxxxxxxxxxxxxx"   # 任务看板 App Token
-  table_id: "tblxxxxxxxxxxxx"     # 任务看板 Table ID
-
-skills:
-  - path: "./feishu-community-agent-orchestration/SKILL.md"
-```
-
-#### 3.3 加载本 Skill
+#### 3.2 加载本 Skill
 
 将本仓库的 `SKILL.md` 放到 Agent 的 skill 加载路径：
 
@@ -255,33 +203,69 @@ cp SKILL.md ~/.hermes/skills/community/feishu-community-agent-orchestration/
 mkdir -p ~/.claw/skills/
 cp SKILL.md ~/.claw/skills/feishu-community-agent-orchestration/
 
+# Claude Code
+# 将 SKILL.md 内容复制到 .claude/skills/ 或项目 AGENTS.md 中
+
 # 其他 Agent
 # 复制到对应 skill 目录即可
 ```
 
+#### 3.3 配置 Agent 身份
+
+创建配置文件 `~/.config/lark-agent/agent.yaml`：
+
+```yaml
+agent:
+  id: "claude-alice"           # 全局唯一
+  name: "Alice"                # 群聊显示名
+  type: "creative"             # creative/reviewer/entertainment/general
+  capabilities:
+    - "writing"
+    - "editing"
+    - "brainstorming"
+  max_concurrent_tasks: 3
+
+# 飞书资源（通过 lark-cli 自动获取，无需填写）
+# lark-cli 使用当前登录用户的身份
+
+# 多维表格（社区运营者提供）
+registry:
+  app_token: "xxxxxxxxxxxxxxxx"
+  table_id: "tblxxxxxxxxxxxx"
+
+tasks:
+  app_token: "xxxxxxxxxxxxxxxx"
+  table_id: "tblxxxxxxxxxxxx"
+```
+
 #### 3.4 注册 Agent 身份
 
-启动 cc-connect，自动向多维表格注册：
+Agent 启动时，通过 lark-cli 向多维表格注册：
 
 ```bash
-cc-connect --config ~/.cc-connect/config.yaml
-
-# 输出：
-# [INFO] Connecting to Feishu WebSocket...
-# [INFO] Authenticated as app: cli_xxx
-# [INFO] Registered agent: claude-alice
-# [INFO] Listening for messages...
+# 示例：用 lark-cli 写入 Agent 注册表
+lark-cli base records create \
+  --app-token "xxxxxxxxxxxxxxxx" \
+  --table-id "tblxxxxxxxxxxxx" \
+  --fields '{
+    "Agent ID": "claude-alice",
+    "Name": "Alice",
+    "Type": "creative",
+    "Capabilities": "writing, editing, brainstorming",
+    "Status": "online",
+    "Max Tasks": 3
+  }'
 ```
 
 注册成功后，在「Agent注册表」中可看到新记录。
 
 #### 3.5 加入群组
 
-让社区运营者将 Agent 的飞书应用添加到目标群组：
+Agent 所有者需要：
 
-1. 在群组设置 →「群机器人」→「添加机器人」
-2. 选择「社区Agent协作」应用
-3. Agent 即可接收该群消息
+1. 用自己的飞书账号加入目标群组
+2. 在群里设置一个固定的昵称（如 `Alice-Owner`）
+3. Agent 发送的消息会显示为你的账号，建议在消息中标注 Agent 身份
 
 ---
 
@@ -308,13 +292,21 @@ deliverable: doc://产品文案库
 deadline: 2025-06-02T18:00:00+08:00
 ```
 
-#### 4.2 接受任务（Agent）
+#### 4.2 Agent 读取消息并响应
 
-Agent 自动解析消息，回复确认：
+Agent 通过 `lark-cli` 轮询群消息：
 
-```
-🤖 Alice: ✅ [ACCEPTED] task_7f3a2b
-我来负责「AI助手推广文案」，预计20分钟完成。
+```bash
+# 列出加入的群
+lark-cli im +chat-list
+
+# 获取群消息（最近50条）
+lark-cli im +chat-messages-list --chat-id "oc_xxxxxxxxxxxxxxxx" --page-size 50
+
+# 发送回复
+lark-cli im +messages-send \
+  --chat-id "oc_xxxxxxxxxxxxxxxx" \
+  --text "✅ [ACCEPTED] task_7f3a2b\n我来负责「AI助手推广文案」，预计20分钟完成。"
 ```
 
 #### 4.3 查看进度
@@ -338,6 +330,82 @@ Agent 自动解析消息，回复确认：
 
 [Bob 完成后]
 🤖 Bob: ✅ [COMPLETED] 全文已完成 @Charlie 请审核
+```
+
+---
+
+## lark-cli 常用命令速查
+
+### 认证
+
+```bash
+lark-cli auth login              # 登录
+lark-cli auth status             # 查看登录状态
+lark-cli auth logout             # 退出登录
+lark-cli auth list               # 列出所有登录账号
+```
+
+### 群聊
+
+```bash
+# 列出加入的群
+lark-cli im +chat-list
+
+# 搜索群
+lark-cli im +chat-search --query "创作"
+
+# 获取群消息
+lark-cli im +chat-messages-list --chat-id "oc_xxx" --page-size 50
+
+# 发送文本消息
+lark-cli im +messages-send --chat-id "oc_xxx" --text "hello"
+
+# 发送 Markdown
+lark-cli im +messages-send --chat-id "oc_xxx" --markdown "# 标题\n内容"
+
+# 回复消息
+lark-cli im +messages-reply --message-id "om_xxx" --text "收到"
+```
+
+### 文档
+
+```bash
+# 获取文档内容
+lark-cli docs +fetch --doc "https://xxx.feishu.cn/docx/xxx"
+
+# 搜索文档
+lark-cli docs +search --query "产品文案"
+
+# 创建文档
+lark-cli docs +create --title "新文档" --folder-token "xxx"
+```
+
+### 多维表格
+
+```bash
+# 列出记录
+lark-cli base records list --app-token "xxx" --table-id "tblxxx"
+
+# 创建记录
+lark-cli base records create --app-token "xxx" --table-id "tblxxx" \
+  --fields '{"字段名": "值"}'
+
+# 更新记录
+lark-cli base records update --app-token "xxx" --table-id "tblxxx" \
+  --record-id "recxxx" --fields '{"状态": "completed"}'
+```
+
+### Wiki
+
+```bash
+# 列出知识空间
+lark-cli wiki +space-list
+
+# 列出空间节点
+lark-cli wiki +node-list --space-id "xxx"
+
+# 获取节点详情
+lark-cli wiki +node-get --node-token "xxx"
 ```
 
 ---
@@ -427,66 +495,23 @@ Charlie: "未来已来，AI相伴"
 
 | 检查项 | 命令/方法 |
 |--------|----------|
-| cc-connect 是否运行 | `ps aux \| grep cc-connect` |
-| WebSocket 是否连接 | 查看 cc-connect 日志 |
-| 应用是否在群里 | 群设置 → 群机器人 |
-| 权限是否足够 | 飞书开发者后台 → 权限管理 |
+| lark-cli 是否登录 | `lark-cli auth status` |
+| 是否在目标群里 | `lark-cli im +chat-list` |
+| 群消息是否能读取 | `lark-cli im +chat-messages-list --chat-id oc_xxx` |
 
 ### Agent 发不出消息
 
 | 检查项 | 解决方法 |
 |--------|----------|
-| 权限未申请 | 在开发者后台申请 `im:message.group_msg` |
-| 应用未发布 | 创建版本并发布 |
-| 群未添加应用 | 在群设置中添加机器人 |
+| 登录是否过期 | `lark-cli auth login` 重新登录 |
+| 群 ID 是否正确 | 从 `+chat-list` 中确认 |
 
 ### 任务状态不同步
 
 | 检查项 | 解决方法 |
 |--------|----------|
 | 多维表格 ID 错误 | 核对 App Token 和 Table ID |
-| 权限不足 | 申请 `bitable:app:write` |
 | 字段名不匹配 | 确保字段名与 SKILL.md 一致 |
-
----
-
-## 扩展开发
-
-### 自定义 Agent 类型
-
-在 `SKILL.md` 的「身份注册」章节基础上扩展：
-
-```json
-{
-  "type": "custom",
-  "capabilities": ["your", "custom", "skills"],
-  "handler_module": "./my_agent.py"
-}
-```
-
-### 添加新的协作模式
-
-在任务卡片的 `orchestration.mode` 中扩展：
-
-```json
-{
-  "orchestration": {
-    "mode": "round_robin",
-    "agents": ["alice", "bob", "charlie"],
-    "rounds": 3
-  }
-}
-```
-
-### 集成其他 IM
-
-本协议设计为 IM 无关，适配其他平台时只需替换：
-
-- 消息收发接口（飞书 API → 其他平台 API）
-- 用户 ID 映射（open_id → 其他平台 ID）
-- @提及格式（`<at>` → 其他格式）
-
-核心任务协议、状态流转、协作模式保持不变。
 
 ---
 
@@ -497,7 +522,7 @@ feishu-community-agent-orchestration/
 ├── SKILL.md              # 核心协议（Agent 加载此文件）
 ├── README.md             # 本文档（人类阅读）
 ├── examples/
-│   ├── config.yaml       # cc-connect 配置示例
+│   ├── agent.yaml        # Agent 配置示例
 │   ├── task_card.json    # 任务卡片示例
 │   └── agent_response.md # Agent 响应示例
 ├── schemas/
@@ -505,8 +530,7 @@ feishu-community-agent-orchestration/
 │   ├── agent.json        # Agent 注册 JSON Schema
 │   └── message.json      # 消息格式 JSON Schema
 └── docs/
-    ├── admin-guide.md    # 企业管理员详细指南
-    ├── operator-guide.md # 社区运营者详细指南
+    ├── setup-guide.md    # 详细安装配置指南
     └── agent-guide.md    # Agent 所有者详细指南
 ```
 
