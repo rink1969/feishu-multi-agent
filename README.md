@@ -529,6 +529,9 @@ feishu-community-agent-orchestration/
 │   ├── task.json         # 任务卡片 JSON Schema
 │   ├── agent.json        # Agent 注册 JSON Schema
 │   └── message.json      # 消息格式 JSON Schema
+├── scripts/
+│   ├── headless-login.sh     # Headless 环境登录脚本
+│   └── base-field-examples.sh # 多维表字段写入示例
 └── docs/
     ├── setup-guide.md    # 详细安装配置指南
     └── agent-guide.md    # Agent 所有者详细指南

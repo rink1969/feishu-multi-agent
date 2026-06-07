@@ -48,7 +48,7 @@ lark-cli --version
 
 ## 3. 登录飞书账号
 
-### 3.1 发起登录
+### 3.1 发起登录（交互式）
 
 ```bash
 lark-cli auth login
@@ -57,8 +57,6 @@ lark-cli auth login
 执行后会显示：
 - 一个二维码（ASCII 艺术）
 - 或一个验证链接
-
-### 3.2 扫码授权
 
 **方式一：飞书 APP 扫码**
 1. 打开飞书 APP
@@ -69,6 +67,41 @@ lark-cli auth login
 1. 复制终端显示的链接
 2. 在浏览器中打开
 3. 按提示登录并授权
+
+### 3.2 Headless 环境登录（服务器/容器）
+
+服务器无图形界面时，使用 `--no-wait` 模式：
+
+```bash
+# 1. 发起非阻塞登录，获取 device_code
+lark-cli auth login --no-wait --json
+
+# 输出示例：
+# {
+#   "device_code": "AQAAxxxx",
+#   "user_code": "123456",
+#   "verification_uri": "https://open.feishu.cn/open-apis/authen/v1/index.html"
+# }
+```
+
+```bash
+# 2. 复制 verification_uri 和 user_code 到手机/另一台电脑
+#    在浏览器打开链接，输入 6 位 user_code，扫码授权
+```
+
+```bash
+# 3. 检查登录状态（轮询）
+lark-cli auth status
+
+# 成功后输出：
+# {
+#   "ok": true,
+#   "user": {"name": "张三", "open_id": "ou_xxx"},
+#   "tenant": {"name": "示例企业"}
+# }
+```
+
+**完整 Headless 脚本**（见 [scripts/headless-login.sh](../scripts/headless-login.sh)）
 
 ### 3.3 验证登录
 
