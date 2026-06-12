@@ -66,6 +66,8 @@ function parseGlobalArgs(argv) {
         printUsage();
         process.exit(0);
       default:
+        // 跳过非选项参数（位置参数）
+        if (!key.startsWith("--")) break;
         throw new LarkCliError(`未知参数：${key}`);
     }
   }

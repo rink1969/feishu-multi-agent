@@ -14,10 +14,16 @@ export class LarkCliError extends Error {
 
 export async function larkCli(args, { allowFailure = false } = {}) {
   return new Promise((resolve, reject) => {
-    const proc = spawn("lark-cli", args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      shell: false,
-    });
+    const isWin = process.platform === "win32";
+    const proc = isWin
+      ? spawn(process.env.COMSPEC || "cmd.exe", ["/c", "lark-cli", ...args], {
+          stdio: ["ignore", "pipe", "pipe"],
+          shell: false,
+        })
+      : spawn("lark-cli", args, {
+          stdio: ["ignore", "pipe", "pipe"],
+          shell: false,
+        });
 
     let stdout = "";
     let stderr = "";
@@ -51,12 +57,14 @@ export async function larkCli(args, { allowFailure = false } = {}) {
 
       let data;
       try {
-        const lines = stdout.split(/\r?\n/).filter((l) => l.trim());
-        const jsonLine = lines.findLast((l) => l.trim().startsWith("{") || l.trim().startsWith("["));
-        if (!jsonLine) {
-          throw new Error("输出中未找到 JSON 行");
+        const firstBrace = stdout.indexOf("{");
+        const firstBracket = stdout.indexOf("[");
+        const startIdx = firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)
+          ? firstBracket : firstBrace;
+        if (startIdx === -1) {
+          throw new Error("输出中未找到 JSON");
         }
-        data = JSON.parse(jsonLine);
+        data = JSON.parse(stdout.slice(startIdx));
       } catch (err) {
         reject(
           new LarkCliError(
