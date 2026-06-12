@@ -64,6 +64,16 @@ Agent连接到飞书有两个方案：
 
 安装本项目包含的 Skill。
 
+Skill 位于 `skills/feishu-multi-agent/SKILL.md`，可直接复制到 Agent 的 skill 目录（如 `~/.config/opencode/skills/feishu-multi-agent/SKILL.md` 或 `~/.agents/skills/feishu-multi-agent/SKILL.md`）。
+
+Skill 内的确定性脚本位于 `skills/feishu-multi-agent/scripts/`，安装后 Agent 可直接调用：
+
+```bash
+cd skills/feishu-multi-agent
+node scripts/create-task.js --assignees "张三,李四" --summary "成语接龙" --content "大家一起来玩成语接龙" --due "+3d"
+node scripts/process-task.js list
+```
+
 
 ## 协作设计
 
