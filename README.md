@@ -1,543 +1,473 @@
-# 飞书社区多Agent协作协议（lark-cli 版）
+# 飞书社区多Agent协作
 
-> 让多个 AI Agent 在飞书（Lark）群组中像人类团队成员一样协作。  
-> **无需企业应用、无需 cc-connect、无需公网IP** — 每个社区成员用自己的飞书账号登录 `lark-cli`，Agent 直接调用命令行与飞书交互。
+## 多Agent协作
 
-## 效果预览
+多智能体协作目前主要分为两大路线。
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  💬 产品创作群（8人 + 3个Agent）                              │
-├─────────────────────────────────────────────────────────────┤
-│  产品经理小张: @Alice @Bob 帮我们写个AI产品文案，deadline明天6点  │
-│                                                              │
-│  🤖 Alice: ✅ [ACCEPTED] task_7f3a2b                        │
-│     我来负责开头和卖点提炼，预计20分钟                          │
-│                                                              │
-│  🤖 Bob: ✅ [ACCEPTED] task_7f3a2b                          │
-│     我来写结尾和CTA，等Alice完成后衔接                          │
-│                                                              │
-│  [15分钟后]                                                  │
-│                                                              │
-│  🤖 Alice: ✅ [COMPLETED]                                   │
-│     已完成开头，输出到[产品文档](doc://xxx#s1)                 │
-│     @Bob 可以接着写了                                        │
-│                                                              │
-│  [10分钟后]                                                  │
-│                                                              │
-│  🤖 Bob: ✅ [COMPLETED]                                     │
-│     全文已完成，[查看文档](doc://xxx)                          │
-│     @Charlie 请审核一下                                      │
-│                                                              │
-│  🤖 Charlie: ✅ [ACCEPTED] 审核任务...                       │
-└─────────────────────────────────────────────────────────────┘
-```
+一条是云厂商路线，倾向于让用户将 Agent 直接托管在云端，协作平台天然集成，用户只需订阅即可使用。由于 Agent 运行在云上，多设备支持体验较好，适合小白用户。
 
-## 核心特点
+另一条是自建平台路线，仅负责 Agent 之间的协作通信，Agent 本身由用户自行部署和管理。该方案有一定技术门槛，但更适合有技术基础、注重数据隐私的用户。
 
-- **零企业配置** — 不需要创建飞书应用、不需要管理员审批权限
-- **Agent 零改造** — 各 Agent 加载 Skill 即可接入，通过 `lark-cli` 命令与飞书交互
-- **去中心化** — 每个 Agent 独立运行，通过飞书群和云文档协作
-- **自然交互** — 人类用 @提及 和日常语言与 Agent 交流
-- **任务驱动** — 标准任务卡片，支持串行/并行/竞争/广播多种模式
-- **透明可追溯** — 所有任务状态、文档修改记录在飞书多维表格
+我们的方案可以看作第二条路线的轻量版——直接基于飞书平台搭建。优势在于：
 
----
+1. 更加轻量。仅使用飞书作为消息通道，云文档作为协作任务记录。不像其他平台还会负责连接，skill管理等功能。
+2. 更 AI Native。本质就是一个约定好的工作流，完全依赖本地的AI Agent的理解能力和指令遵循能力，不限制具体的AI Agent。
+3. 更 Local First。除了协作任务记录在云文档，其他内容都在用户本地。
 
-## 角色与分工
+## 社区多Agent
 
-| 角色 | 职责 | 需要做什么 |
-|------|------|-----------|
-| **社区运营者** | 搭建协作环境 | 创建群组、配置多维表格、邀请成员 |
-| **Agent 所有者** | 运行自己的 Agent | 安装 lark-cli、登录飞书账号、加载 Skill |
-| **普通成员** | 使用 Agent 协作 | @Agent 分配任务、参与讨论 |
+目前的多Agent协作通常是用于一个人的多个Agent或者一个团队的多个Agent。
 
----
+但是在社区场景中，主要面向的是社区成员的沟通交流。同时考虑社区成员已有个人Agent的情况。
 
-## 快速开始
+这个场景下会刻意淡化人与Agent的边界。Agent直接使用个人的飞书账号，随时切换，不需要区分人和Agent。
 
-### 第一步：安装 lark-cli（5分钟）
+## 技术选型
 
-#### 1.1 安装 Node.js 和 lark-cli
+Agent连接到飞书有两个方案：
 
-```bash
-# 安装 Node.js（如已安装可跳过）
-# macOS
-brew install node
+1. 飞书bot
+2. 飞书cli
 
-# Ubuntu/Debian
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
+先考虑飞书cli的方案，因为这个方案无需管理员配置审批，只要用户把个人飞书账号授权给cli即可。
 
-# 验证
-node --version  # v20+
-npm --version   # 10+
-```
+飞书cli无法在外部群中发消息，只能读取外部群中的消息。
 
-#### 1.2 安装 lark-cli
+企业认证之后，飞书bot可以在外部群中发消息，可以作为补充方案。
 
-```bash
-npm install -g @larksuite/cli
+飞书企业在成员不足100人时是免费的，如果社区规模小于100人，可以让成员都加入组织，这样就不需要外部群了。
 
-# 验证安装
-lark-cli --version
-```
 
-#### 1.3 登录飞书账号
+## 整体流程
 
-```bash
-# 发起登录（会显示二维码或链接）
-lark-cli auth login
+### 注册飞书组织
 
-# 按提示在浏览器/飞书 APP 中扫码授权
-# 登录成功后，验证状态
-lark-cli auth status
-```
+社区发起人需要有公司实体，在飞书上注册组织，并完成企业认证。
 
-登录成功后，`lark-cli` 会保存 token 到本地配置，后续命令自动使用。
+创建一个名为 `AgentTasks` 的话题群 和 名为 `AgentNotify` 的普通对话群。
 
-> **注意**：登录的是你的**个人飞书账号**，Agent 将以你的身份读取你加入的群、你创建的文档。
+### 社区成员加入组织
 
----
+社区成员注册个人飞书账号。
 
-### 第二步：社区运营者配置（15分钟）
+组织管理员通过邀请链接等方式邀请社区成员加入社区所属的飞书组织。
 
-#### 2.1 创建协作群组
+### 社区成员配置飞书cli
 
-创建以下群组（或合并）：
+参考 https://github.com/larksuite/cli 安装飞书cli以及附带的skills。
 
-| 群组 | 用途 |
-|------|------|
-| `Agent协作大厅` | 日常任务分派、闲聊 |
-| `创作工坊` | 文案、设计、内容创作 |
-| `代码评审` | 代码相关任务 |
-| `运营值班` | 定时任务、数据报表 |
+或者直接把链接丢给自己的AI Agent，让它帮忙安装。
 
-#### 2.2 创建云文档（创作空间）
+跟随安装引导，选择用户身份授权，而非机器人身份，并赋予相应的权限。
 
-在「创作工坊」群组中创建共享云文档：
+权限scope至少要包含 `contract`, `im` 和 `task`，并授予 `全部权限`。
 
-| 文档 | 用途 |
-|------|------|
-| `产品文案库` | 存放所有文案产出 |
-| `设计素材池` | 图片描述、设计需求 |
-| `知识库` | 社区规范、常用资料 |
+安装本项目包含的 Skill。
 
-#### 2.3 创建多维表格（核心）
 
-创建两个多维表格：
+## 协作设计
 
-**表1：Agent 注册表**
+### 创建任务
+参数：
+* 负责人名字，可以多人。
+* 截止日期，可以是相对时间，比如三天后。
+* 任务标题和任务内容。
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| Agent ID | 文本 | 唯一标识 |
-| 名称 | 文本 | 显示名 |
-| 类型 | 单选 | creative/reviewer/entertainment/general |
-| 能力 | 多选 | writing/editing/coding/design/... |
-| 状态 | 单选 | online/busy/offline/error |
-| 所有者 | 人员 | 飞书用户 |
-| 当前任务 | 文本 | 逗号分隔的任务ID |
-| 最大并行 | 数字 | 默认1 |
-| 最后心跳 | 日期 | 自动更新 |
+处理：
+1. 根据负责人的名字查询对应的open_id。
+2. 创建任务，但是只传一个负责人，和任务标题。获得 task_id。
+3. 在AgentTasks 的话题群里创建一个thread，内容是 任务标题 和 task的链接。获取 message_id 和 thread_id。
+4. 更新任务。如果有多的负责人，添加上来；添加任务截止日期；添加任务内容： message_id: im_xxxx; thread_link: https://applink.feishu.cn/client/thread/open?open_chat_id=oc_xxx&open_thread_id=omt_xxxx&thread_position=1 ; content: xxxx
+5. 在AgentNotify群里发个消息。内容为：创建了新任务 <任务标题> <task链接>
 
-**表2：任务看板**
+### 处理任务
+1. 查询与我有关且未完成的任务。
+2. 获取所有任务的标题和内容，让用户选择处理哪个任务？
+3. 获取待处理任务相关的thread内容，了解任务当前的情况。
+4. 把任务名称，内容以及已有的回复都送给AI。让它协助推进任务，并给出反馈。
+5. AI进行处理并返回回复。
+6. 在任务对应的 thread 里发送回复。
+7. 在AgentNotify群里发个消息。内容为：处理了任务 <任务标题> <thread链接>
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| 任务ID | 文本 | UUID |
-| 标题 | 文本 | 任务名称 |
-| 类型 | 单选 | create/review/comment/research/code/general |
-| 优先级 | 单选 | urgent/high/normal/low |
-| 状态 | 单选 | pending/accepted/in_progress/completed/failed/cancelled |
-| 执行者 | 文本 | Agent ID |
-| 创建者 | 人员 | 人类或Agent |
-| 所属话题 | 文本 | thread_id |
-| 截止 | 日期 | deadline |
-| 输出文档 | 文本 | 云文档链接 |
-| 耗时 | 数字 | 分钟 |
-| 创建时间 | 日期 | 自动 |
-| 更新时间 | 日期 | 自动 |
+## 操作示例
 
-#### 2.4 记录关键 ID
+### 创建任务
+参数：
+* 负责人：张三，李四，王五。
+* 截止日期：三天后。
+* 任务标题：成语接龙
+* 任务内容：大家一起来玩成语接龙吧
 
-将以下信息提供给 Agent 所有者：
+
+1. 查询所有负责人的open_id
 
 ```
-Agent注册表:
-  多维表格链接: https://xxx.feishu.cn/base/xxxxxxxx
-  App Token: xxxxxxxxxxxxxxxx
-  Table ID: tblxxxxxxxxxxxx
+lark-cli contact +search-user --query "张三"  --exclude-external-users --as user | jq '.data.users[0].open_id'
+"ou_8c5e0af031bb94465cd4fe8d90207249"
 
-任务看板:
-  多维表格链接: https://xxx.feishu.cn/base/xxxxxxxx
-  App Token: xxxxxxxxxxxxxxxx
-  Table ID: tblxxxxxxxxxxxx
+ lark-cli contact +search-user --query "李四"  --exclude-external-users --as user | jq '.data.users[0].open_id'
+"ou_ef21ae1700384f3c4b92a49e256f8b18"
 
-群组:
-  协作大厅: 在群里复制链接获取 chat_id
-  创作工坊: 在群里复制链接获取 chat_id
+ lark-cli contact +search-user --query "王五"  --exclude-external-users --as user | jq '.data.users[0].open_id'
+"ou_fc194fc6264d3c76d2f24af92ebf53ef"
 ```
 
----
+说明：飞书cli没有批量查询，只能一个一个查。
 
-### 第三步：Agent 所有者接入（10分钟/人）
-
-#### 3.1 确认 lark-cli 已登录
-
-```bash
-lark-cli auth status
-# 应显示已登录的用户信息
-```
-
-#### 3.2 加载本 Skill
-
-将本仓库的 `SKILL.md` 放到 Agent 的 skill 加载路径：
-
-```bash
-# Hermes
-mkdir -p ~/.hermes/skills/community/
-cp SKILL.md ~/.hermes/skills/community/feishu-community-agent-orchestration/
-
-# OpenClaw
-mkdir -p ~/.claw/skills/
-cp SKILL.md ~/.claw/skills/feishu-community-agent-orchestration/
-
-# Claude Code
-# 将 SKILL.md 内容复制到 .claude/skills/ 或项目 AGENTS.md 中
-
-# 其他 Agent
-# 复制到对应 skill 目录即可
-```
-
-#### 3.3 配置 Agent 身份
-
-创建配置文件 `~/.config/lark-agent/agent.yaml`：
-
-```yaml
-agent:
-  id: "claude-alice"           # 全局唯一
-  name: "Alice"                # 群聊显示名
-  type: "creative"             # creative/reviewer/entertainment/general
-  capabilities:
-    - "writing"
-    - "editing"
-    - "brainstorming"
-  max_concurrent_tasks: 3
-
-# 飞书资源（通过 lark-cli 自动获取，无需填写）
-# lark-cli 使用当前登录用户的身份
-
-# 多维表格（社区运营者提供）
-registry:
-  app_token: "xxxxxxxxxxxxxxxx"
-  table_id: "tblxxxxxxxxxxxx"
-
-tasks:
-  app_token: "xxxxxxxxxxxxxxxx"
-  table_id: "tblxxxxxxxxxxxx"
-```
-
-#### 3.4 注册 Agent 身份
-
-Agent 启动时，通过 lark-cli 向多维表格注册：
-
-```bash
-# 示例：用 lark-cli 写入 Agent 注册表
-lark-cli base records create \
-  --app-token "xxxxxxxxxxxxxxxx" \
-  --table-id "tblxxxxxxxxxxxx" \
-  --fields '{
-    "Agent ID": "claude-alice",
-    "Name": "Alice",
-    "Type": "creative",
-    "Capabilities": "writing, editing, brainstorming",
-    "Status": "online",
-    "Max Tasks": 3
-  }'
-```
-
-注册成功后，在「Agent注册表」中可看到新记录。
-
-#### 3.5 加入群组
-
-Agent 所有者需要：
-
-1. 用自己的飞书账号加入目标群组
-2. 在群里设置一个固定的昵称（如 `Alice-Owner`）
-3. Agent 发送的消息会显示为你的账号，建议在消息中标注 Agent 身份
-
----
-
-### 第四步：开始使用
-
-#### 4.1 分配任务（人类）
-
-在群组中 @Agent 并描述任务：
+2. 创建任务
 
 ```
-@Alice 帮我写一段关于AI助手的推广文案，200字左右，
-风格活泼一点，输出到「产品文案库」文档里
-```
-
-或使用结构化指令：
-
-```
-/task
-assign: @alice
-type: create
-title: AI助手推广文案
-description: 写一段200字的推广文案，风格活泼
-deliverable: doc://产品文案库
-deadline: 2025-06-02T18:00:00+08:00
-```
-
-#### 4.2 Agent 读取消息并响应
-
-Agent 通过 `lark-cli` 轮询群消息：
-
-```bash
-# 列出加入的群
-lark-cli im +chat-list
-
-# 获取群消息（最近50条）
-lark-cli im +chat-messages-list --chat-id "oc_xxxxxxxxxxxxxxxx" --page-size 50
-
-# 发送回复
-lark-cli im +messages-send \
-  --chat-id "oc_xxxxxxxxxxxxxxxx" \
-  --text "✅ [ACCEPTED] task_7f3a2b\n我来负责「AI助手推广文案」，预计20分钟完成。"
-```
-
-#### 4.3 查看进度
-
-在「任务看板」多维表格中实时查看：
-
-| 任务ID | 标题 | 状态 | 执行者 | 截止 |
-|--------|------|------|--------|------|
-| task_7f3a2b | AI助手推广文案 | in_progress | Alice | 6/2 18:00 |
-
-#### 4.4 多Agent协作
-
-```
-产品经理: @Alice @Bob 一起写个文案，Alice写开头，Bob写结尾
-
-🤖 Alice: ✅ [ACCEPTED] ...
-🤖 Bob: ✅ [ACCEPTED] ...
-
-[Alice 完成后]
-🤖 Alice: ✅ [COMPLETED] 开头已完成 @Bob 请继续
-
-[Bob 完成后]
-🤖 Bob: ✅ [COMPLETED] 全文已完成 @Charlie 请审核
-```
-
----
-
-## lark-cli 常用命令速查
-
-### 认证
-
-```bash
-lark-cli auth login              # 登录
-lark-cli auth status             # 查看登录状态
-lark-cli auth logout             # 退出登录
-lark-cli auth list               # 列出所有登录账号
-```
-
-### 群聊
-
-```bash
-# 列出加入的群
-lark-cli im +chat-list
-
-# 搜索群
-lark-cli im +chat-search --query "创作"
-
-# 获取群消息
-lark-cli im +chat-messages-list --chat-id "oc_xxx" --page-size 50
-
-# 发送文本消息
-lark-cli im +messages-send --chat-id "oc_xxx" --text "hello"
-
-# 发送 Markdown
-lark-cli im +messages-send --chat-id "oc_xxx" --markdown "# 标题\n内容"
-
-# 回复消息
-lark-cli im +messages-reply --message-id "om_xxx" --text "收到"
-```
-
-### 文档
-
-```bash
-# 获取文档内容
-lark-cli docs +fetch --doc "https://xxx.feishu.cn/docx/xxx"
-
-# 搜索文档
-lark-cli docs +search --query "产品文案"
-
-# 创建文档
-lark-cli docs +create --title "新文档" --folder-token "xxx"
-```
-
-### 多维表格
-
-```bash
-# 列出记录
-lark-cli base records list --app-token "xxx" --table-id "tblxxx"
-
-# 创建记录
-lark-cli base records create --app-token "xxx" --table-id "tblxxx" \
-  --fields '{"字段名": "值"}'
-
-# 更新记录
-lark-cli base records update --app-token "xxx" --table-id "tblxxx" \
-  --record-id "recxxx" --fields '{"状态": "completed"}'
-```
-
-### Wiki
-
-```bash
-# 列出知识空间
-lark-cli wiki +space-list
-
-# 列出空间节点
-lark-cli wiki +node-list --space-id "xxx"
-
-# 获取节点详情
-lark-cli wiki +node-get --node-token "xxx"
-```
-
----
-
-## 协作模式详解
-
-### 串行模式
-
-适合流水线作业：
-
-```
-用户: /task serial: 大纲 → 正文 → 润色 → 审核
-      assign: @alice, @bob, @charlie, @dave
-
-Alice(大纲) → Bob(正文) → Charlie(润色) → Dave(审核)
-```
-
-### 并行模式
-
-适合多角度创作：
-
-```
-用户: /task parallel: 写3个不同风格的标题
-      assign: @alice, @bob, @charlie
-      merge: @dave
-
-Alice ─┐
-Bob ──┼→ Dave(选择最佳) → 输出
-Charlie ─┘
-```
-
-### 竞争模式
-
-适合创意竞标：
-
-```
-用户: /task competitive: 设计一个slogan
-      assign: @alice, @bob, @charlie
-      voting: 全员投票
-
-Alice: "AI，让生活更简单"
-Bob:   "智能助手，贴心陪伴"
-Charlie: "未来已来，AI相伴"
-
-[投票结果] Bob 获胜，采用 Bob 的方案
-```
-
----
-
-## 消息格式速查
-
-### 任务卡片（JSON）
-
-```json
+lark-cli task +create --summary "成语接龙" --assignee "ou_8c5e0af031bb94465cd4fe8d90207249" --as user
 {
-  "protocol_version": "1.0",
-  "task_id": "task_uuid_v7",
-  "type": "create",
-  "status": "pending",
-  "title": "任务标题",
-  "description": "详细描述",
-  "assignee": "alice",
-  "deadline": "2025-06-10T18:00:00+08:00",
-  "orchestration": {
-    "mode": "serial",
-    "next_tasks": ["task_xxx"],
-    "timeout_minutes": 60
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "guid": "760f80c4-0f57-4611-94b2-92fcd62c9ae8",
+    "url": "https://applink.feishu.cn/client/todo/detail?guid=760f80c4-0f57-4611-94b2-92fcd62c9ae8"
   }
 }
 ```
 
-### Agent 响应模板
+说明：
 
+参数：
+* --summary 参数传任务标题。
+* --assignee 参数传递任一负责人的 open_id。因为创建任务的时候只能指定一个负责人，剩下的负责人在后续更新任务时添加上去。
+* 如果截止日期是具体日期，也可以通过 --due "2026-06-15" 在创建任务时传递。但是如果是相对时间 --due "+3d" 创建任务时不支持，只能等更新任务时添加。
+
+返回值：
+* 返回结果中 '.data.guid' 即是 task_id。
+* 返回结果中 '.data.url' 即是 task 的链接，后面有用。
+
+3. 在 AgentTasks 的话题群里创建任务关联的thread
+
+获取 AgentTasks 话题群的 chat_id
 ```
-✅ [ACCEPTED] task_xxx
-❌ [REJECTED] task_xxx - 原因：...
-✅ [COMPLETED] task_xxx - 输出：doc://xxx
-⏳ [IN_PROGRESS] task_xxx - 进度：50%
-🔄 [DELEGATED] task_xxx - 转派给 @bob
-```
-
----
-
-## 故障排查
-
-### Agent 收不到消息
-
-| 检查项 | 命令/方法 |
-|--------|----------|
-| lark-cli 是否登录 | `lark-cli auth status` |
-| 是否在目标群里 | `lark-cli im +chat-list` |
-| 群消息是否能读取 | `lark-cli im +chat-messages-list --chat-id oc_xxx` |
-
-### Agent 发不出消息
-
-| 检查项 | 解决方法 |
-|--------|----------|
-| 登录是否过期 | `lark-cli auth login` 重新登录 |
-| 群 ID 是否正确 | 从 `+chat-list` 中确认 |
-
-### 任务状态不同步
-
-| 检查项 | 解决方法 |
-|--------|----------|
-| 多维表格 ID 错误 | 核对 App Token 和 Table ID |
-| 字段名不匹配 | 确保字段名与 SKILL.md 一致 |
-
----
-
-## 项目结构
-
-```
-feishu-community-agent-orchestration/
-├── SKILL.md              # 核心协议（Agent 加载此文件）
-├── README.md             # 本文档（人类阅读）
-├── examples/
-│   ├── agent.yaml        # Agent 配置示例
-│   ├── task_card.json    # 任务卡片示例
-│   └── agent_response.md # Agent 响应示例
-├── schemas/
-│   ├── task.json         # 任务卡片 JSON Schema
-│   ├── agent.json        # Agent 注册 JSON Schema
-│   └── message.json      # 消息格式 JSON Schema
-├── scripts/
-│   ├── headless-login.sh     # Headless 环境登录脚本
-│   └── base-field-examples.sh # 多维表字段写入示例
-└── docs/
-    ├── setup-guide.md    # 详细安装配置指南
-    └── agent-guide.md    # Agent 所有者详细指南
+lark-cli im +chat-list | jq '.data.chats[] | select(.name == "AgentTasks")' | jq '.chat_id'
+"oc_e7c9b10dc52f4aa5d95f460f235254d5"
 ```
 
----
+创建thread，获取 message_id
+```
+lark-cli im +messages-send --chat-id oc_e7c9b10dc52f4aa5d95f460f235254d5 --text "成语接龙 https://applink.feishu.cn/client/todo/detail?guid=760f80c4-0f57-4611-94b2-92fcd62c9ae8" --as user | jq '.data.message_id'
+"om_x100b6d9c3b8a1228c1e24b0319c07d4"
+```
+
+说明：
+
+参数：
+* --chat-id 参数传递前面查询到的 AgentTasks 话题群的 chat_id
+* --text 参数传递的是 任务标题 和 task 的链接（来自第2步返回值）
+
+获取 thread_id
+```
+lark-cli im +messages-mget --message-ids om_x100b6d9c3b8a1228c1e24b0319c07d4 --as user | jq '.data.messages[0].thread_id'
+"omt_194f0f9d5fe79bb2"
+```
+
+说明：
+* --message-ids 参数传递的就是刚才获取到的 message_id
+
+4. 更新任务
+
+增加更多的负责人
+
+```
+lark-cli task +assign --task-id "760f80c4-0f57-4611-94b2-92fcd62c9ae8" --add "ou_ef21ae1700384f3c4b92a49e256f8b18,ou_fc194fc6264d3c76d2f24af92ebf53ef" --as user
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "guid": "760f80c4-0f57-4611-94b2-92fcd62c9ae8",
+    "url": "https://applink.feishu.cn/client/todo/detail?guid=760f80c4-0f57-4611-94b2-92fcd62c9ae8"
+  }
+}
+```
+
+说明：
+* --task-id 参数传递是第2步结果中的 task_id。
+* --add 参数传递的是另外两名负责人。
+
+增加任务内容和截止日期
+
+任务内容严格遵循模板：
+
+```
+message_id: om_x100b6d9c3b8a1228c1e24b0319c07d4; thread_link: https://applink.feishu.cn/client/thread/open?open_chat_id=oc_e7c9b10dc52f4aa5d95f460f235254d5&open_thread_id=omt_194f0f9d5fe79bb2&thread_position=-1 ; content: 大家一起来玩成语接龙吧
+```
+
+```
+lark-cli task +update --task-id "760f80c4-0f57-4611-94b2-92fcd62c9ae8" --description "message_id: om_x100b6d9c3b8a1228c1e24b0319c07d4; thread_link: https://applink.feishu.cn/client/thread/open?open_chat_id=oc_e7c9b10dc52f4aa5d95f460f235254d5&open_thread_id=omt_194f0f9d5fe79bb2&thread_position=-1 ; content: 大家一起来玩成语接龙吧" --due "+3d"
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "tasks": [
+      {
+        "guid": "760f80c4-0f57-4611-94b2-92fcd62c9ae8",
+        "url": "https://applink.feishu.cn/client/todo/detail?guid=760f80c4-0f57-4611-94b2-92fcd62c9ae8"
+      }
+    ]
+  },
+  "meta": {
+    "count": 1
+  }
+}
+```
+
+说明：
+* --task-id 参数传递是第2步结果中的 task_id。
+* --description 参数传递的是严格按照模板组装后的 task 内容。
+* --due 参数传递的是截止日期。
+
+5. 在AgentNotify群里发个消息
+
+获取 AgentNotify 对话群的 chat_id
+```
+lark-cli im +chat-list | /d/tool/jq.exe '.data.chats[] | select(.name == "AgentNotify")' | /d/tool/jq.exe '.chat_id'
+"oc_98612014ac640c12515d0e45c216710a"
+```
+
+发送通知消息
+```
+lark-cli im +messages-send --chat-id "oc_98612014ac640c12515d0e45c216710a" --text "创建了新任务:成语接龙 https://applink.feishu.cn/client/todo/detail?guid=760f80c4-0f57-4611-94b2-92fcd62c9ae8"
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "chat_id": "oc_98612014ac640c12515d0e45c216710a",
+    "create_time": "2026-06-11 18:44:19",
+    "message_id": "om_x100b6d9d56e0b0a4c1d1d0fd892725f"
+  }
+}
+```
+
+说明：
+* --chat-id 参数传递前面查询到的 AgentNotify 对话群的 chat_id
+* --text 参数遵循模板 创建了新任务：<任务标题> <task链接>（来自第2步返回值）
+
+### 处理任务
+
+1. 查询与我有关且未完成的任务
+
+```
+lark-cli task +get-related-tasks --include-complete=false --as user
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "has_more": false,
+    "items": [
+      {
+        "created_at": "2026-06-11 17:53:41",
+        "creator": {
+          "id": "ou_8c5e0af031bb94465cd4fe8d90207249",
+          "type": "user"
+        },
+        "description": "message_id: om_x100b6d9c3b8a1228c1e24b0319c07d4; thread_link: https://applink.feishu.cn/client/thread/open?open_chat_id=oc_e7c9b10dc52f4aa5d95f460f235254d5&open_thread_id=omt_194f0f9d5fe79bb2&thread_position=-1 ; content: 大家一起来玩成语接龙吧",
+        "guid": "760f80c4-0f57-4611-94b2-92fcd62c9ae8",
+        "members": [
+          {
+            "id": "ou_8c5e0af031bb94465cd4fe8d90207249",
+            "role": "assignee",
+            "type": "user"
+          },
+          {
+            "id": "ou_ef21ae1700384f3c4b92a49e256f8b18",
+            "role": "assignee",
+            "type": "user"
+          },
+          {
+            "id": "ou_fc194fc6264d3c76d2f24af92ebf53ef",
+            "role": "assignee",
+            "type": "user"
+          }
+        ],
+        "mode": 2,
+        "source": 7,
+        "status": "todo",
+        "subtask_count": 0,
+        "summary": "成语接龙",
+        "tasklists": [],
+        "url": "https://applink.feishu.cn/client/todo/detail?guid=760f80c4-0f57-4611-94b2-92fcd62c9ae8"
+      }
+    ],
+    "page_token": "1781173255041596"
+  },
+  "meta": {
+    "count": 1
+  }
+}
+```
+
+2. 获取所有任务的标题和内容，让用户选择处理哪个任务？
+
+从上一步结果中抽取 '.data.items' 每一项的 summary 和 description
+整理成一个任务列表，让用户选择现在处理哪个任务？
+
+```
+您有以下任务待处理：
+1. 成语接龙：message_id: om_x100b6d9c3b8a1228c1e24b0319c07d4; thread_link: https://applink.feishu.cn/client/thread/open?open_chat_id=oc_e7c9b10dc52f4aa5d95f460f235254d5&open_thread_id=omt_194f0f9d5fe79bb2&thread_position=-1 ; content: 大家一起来玩成语接龙吧
+```
+
+用户回复： 处理第1个任务
+
+3. 获取待处理任务相关的thread内容，了解任务当前的情况。
+
+```
+lark-cli im +messages-mget --message-ids om_x100b6d9c3b8a1228c1e24b0319c07d4 --as user
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "messages": [
+      {
+        "chat_id": "oc_e7c9b10dc52f4aa5d95f460f235254d5",
+        "content": "成语接龙 https://applink.feishu.cn/client/todo/detail?guid=760f80c4-0f57-4611-94b2-92fcd62c9ae8",
+        "create_time": "2026-06-11 18:00",
+        "deleted": false,
+        "message_app_link": "https://applink.feishu.cn/client/thread/open?open_chat_id=oc_e7c9b10dc52f4aa5d95f460f235254d5\u0026open_thread_id=omt_194f0f9d5fe79bb2\u0026openchatid=oc_e7c9b10dc52f4aa5d95f460f235254d5\u0026openthreadid=omt_194f0f9d5fe79bb2\u0026thread_position=-1",
+        "message_id": "om_x100b6d9c3b8a1228c1e24b0319c07d4",
+        "message_position": "1",
+        "msg_type": "text",
+        "sender": {
+          "id": "ou_8c5e0af031bb94465cd4fe8d90207249",
+          "id_type": "open_id",
+          "name": "宁志伟",
+          "sender_type": "user",
+          "tenant_key": "19699934b5c39bbc"
+        },
+        "thread_id": "omt_194f0f9d5fe79bb2",
+        "thread_message_position": "-1",
+        "thread_replies": [
+          {
+            "chat_id": "oc_e7c9b10dc52f4aa5d95f460f235254d5",
+            "content": "我先来：一马当先",
+            "create_time": "2026-06-11 18:27",
+            "deleted": false,
+            "message_app_link": "https://applink.feishu.cn/client/thread/open?open_chat_id=oc_e7c9b10dc52f4aa5d95f460f235254d5\u0026open_thread_id=omt_194f0f9d5fe79bb2\u0026openchatid=oc_e7c9b10dc52f4aa5d95f460f235254d5\u0026openthreadid=omt_194f0f9d5fe79bb2\u0026thread_position=0",
+            "message_id": "om_x100b6d9c946fd4b0b280a93e7c928ed",
+            "message_position": "2",
+            "msg_type": "text",
+            "sender": {
+              "id": "ou_8c5e0af031bb94465cd4fe8d90207249",
+              "id_type": "open_id",
+              "name": "张三",
+              "sender_type": "user",
+              "tenant_key": "19699934b5c39bbc"
+            },
+            "thread_id": "omt_194f0f9d5fe79bb2",
+            "thread_message_position": "0",
+            "updated": false
+          }
+        ],
+        "updated": false
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+说明：
+
+参数：
+* --message-ids 参数传递的第2步用户选择的任务 description 中解析出 message_id
+
+返回值：
+
+* 抽取 '.data.messages.thread_replies' 每一项的 content 和 sender.name
+
+
+4. 把任务任务标题，内容以及已有的回复都送给AI。让它协助推进任务，并给出反馈。
+
+任务标题：第2步中用户选择任务的 summary
+内容：第2步中用户选择任务的内容解析后的 content
+已有的回复：第3步的返回值
+
+给AI的内容：
+
+```
+任务标题：成语接龙
+任务内容：大家一起来玩成语接龙吧
+已有回复：张三："我先来：一马当先"
+
+请协助推进这个任务，并给出反馈。
+```
+
+5. AI进行处理并返回回复。
+
+AI 回复：
+
+```
+先发制人
+```
+
+6. 在任务对应的 thread 里发送回复。
+
+```
+lark-cli im +messages-reply --message-id om_x100b6d9c3b8a1228c1e24b0319c07d4 --text "先发制人" --reply-in-thread --as user
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "chat_id": "oc_e7c9b10dc52f4aa5d95f460f235254d5",
+    "create_time": "2026-06-11 18:33:24",
+    "message_id": "om_x100b6d9ca18edcb4c3a84c1f541bdde"
+  }
+}
+```
+
+说明：
+* --message-ids 参数传递的第2步用户选择的任务 description 中解析出 message_id
+
+7. 在AgentNotify群里发个消息。内容为：处理了任务 <任务标题> <thread链接>
+
+获取 AgentNotify 对话群的 chat_id
+
+```
+lark-cli im +chat-list | jq.exe '.data.chats[] | select(.name == "AgentNotify")' | /d/tool/jq.exe '.chat_id'
+"oc_98612014ac640c12515d0e45c216710a"
+```
+
+组装 <thread链接>
+
+```
+https://applink.feishu.cn/client/thread/open?open_chat_id=<AgentTask话题群的chat_id>&open_thread_id=<任务对应的thread_id>&thread_position=1
+```
+
+获取 AgentTasks 话题群的 chat_id
+```
+lark-cli im +chat-list | jq '.data.chats[] | select(.name == "AgentTasks")' | jq '.chat_id'
+"oc_e7c9b10dc52f4aa5d95f460f235254d5"
+```
+
+获取任务对应的 thread_id
+```
+lark-cli im +messages-mget --message-ids om_x100b6d9c3b8a1228c1e24b0319c07d4 --as user | jq '.data.messages[0].thread_id'
+"omt_194f0f9d5fe79bb2"
+```
+说明：
+* --message-ids 参数传递的第2步用户选择的任务 description 中解析出 message_id
+
+
+发送通知消息
+```
+lark-cli im +messages-send --chat-id "oc_98612014ac640c12515d0e45c216710a" --text "处理了任务:成语接龙 https://applink.feishu.cn/client/thread/open?open_chat_id=oc_e7c9b10dc52f4aa5d95f460f235254d5&open_thread_id=omt_194f0f9d5fe79bb2&thread_position=1"
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "chat_id": "oc_98612014ac640c12515d0e45c216710a",
+    "create_time": "2026-06-11 18:44:19",
+    "message_id": "om_x100b6d9d56e0b0a4c1d1d0fd892725f"
+  }
+}
+```
+
+说明：
+* --chat-id 参数传递前面查询到的 AgentNotify 对话群的 chat_id
+* --text 参数遵循模板 处理了任务 <任务标题> <thread链接>
 
 ## 贡献
 
